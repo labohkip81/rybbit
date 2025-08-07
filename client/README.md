@@ -34,3 +34,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+#NOTE:
+When building modified docker compose specify our own container with:
+
+`docker buildx build --platform linux/amd64,linux/arm64 -t labohkip81/rybbit-client2 -f /Users/mac/Dev/Karim/rybbit/client/Dockerfile . --push`
+
+Only for mac users
