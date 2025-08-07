@@ -80,8 +80,7 @@ export function MainSection() {
                   tilt_wrap.className
                 )}
               >
-                <Image src="/rybbit.svg" alt="Rybbit" width={20} height={20} />
-                rybbit.io
+               Karim CG Visuals
               </Link>
             </div>
             <span className="text-sm text-neutral-200">

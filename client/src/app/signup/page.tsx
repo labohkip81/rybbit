@@ -367,8 +367,8 @@ export default function SignupPage() {
 
         {/* Logo and title above the card */}
         <div className="relative z-10 mb-6 text-center">
-          <a href="https://rybbit.io" target="_blank" className="inline-block mb-2">
-            <Image src="/rybbit-text.svg" alt="Rybbit" width={150} height={34} />
+          <a href="https://www.karimcgvisuals.com/" target="_blank" className="inline-block mb-2">
+            <p className="text-white">KARIM</p>
           </a>
           <h1 className="text-lg text-neutral-300">Get started with Rybbit</h1>
         </div>

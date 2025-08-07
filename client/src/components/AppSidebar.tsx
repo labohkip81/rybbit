@@ -24,7 +24,7 @@ export function AppSidebar() {
     >
       <div className="flex flex-col items-start gap-2">
         <Link href="/" className="mb-3 mt-1 ml-0.5 flex items-center justify-center">
-          <Image src="/rybbit.svg" alt="Rybbit" width={24} height={18} />
+            <p>KARIM</p>
         </Link>
         <SidebarLink
           href="/"
