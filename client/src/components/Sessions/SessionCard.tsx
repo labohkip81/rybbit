@@ -1,46 +1,24 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Laptop,
-  MousePointerClick,
-  Smartphone,
-} from "lucide-react";
-import { DateTime, Duration } from "luxon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowRight, ChevronDown, ChevronRight, FileText, MousePointerClick, TriangleAlert } from "lucide-react";
+import { DateTime } from "luxon";
 import { memo, useState } from "react";
 import { GetSessionsResponse } from "../../api/analytics/userSessions";
-import { Browser } from "../../app/[site]/components/shared/icons/Browser";
-import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { cn, formatter, getCountryName } from "../../lib/utils";
-import { formatDuration } from "../../lib/dateTimeUtils";
+import { formatDuration, hour12, userLocale } from "../../lib/dateTimeUtils";
+import { cn, formatter } from "../../lib/utils";
+import {
+  BrowserTooltipIcon,
+  CountryFlagTooltipIcon,
+  DeviceTypeTooltipIcon,
+  OperatingSystemTooltipIcon,
+} from "../TooltipIcons/TooltipIcons";
 import { Badge } from "../ui/badge";
 import { SessionDetails } from "./SessionDetails";
-import { userLocale, hour12 } from "../../lib/dateTimeUtils";
-import { useGetRegionName } from "../../lib/geo";
 
 interface SessionCardProps {
   session: GetSessionsResponse[number];
   userId?: string;
   onClick?: () => void;
-}
-
-// DeviceIcon component for displaying mobile/desktop icons
-function DeviceIcon({ deviceType }: { deviceType: string }) {
-  const type = deviceType.toLowerCase();
-
-  if (type.includes("mobile") || type.includes("tablet")) {
-    return <Smartphone className="w-4 h-4" />;
-  }
-
-  return <Laptop className="w-4 h-4" />;
 }
 
 // Function to truncate path for display
@@ -53,8 +31,6 @@ function truncatePath(path: string, maxLength: number = 32) {
 }
 
 export function SessionCard({ session, onClick, userId }: SessionCardProps) {
-  const { getRegionName } = useGetRegionName();
-
   const [expanded, setExpanded] = useState(false);
 
   // Calculate session duration in minutes
@@ -74,100 +50,32 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
     }
   };
 
-  const getFullLocation = (session: GetSessionsResponse[number]) => {
-    let location = "";
-    if (session.city) {
-      location += `${session.city}, `;
-    }
-    if (getRegionName(session.region)) {
-      location += `${getRegionName(session.region)}, `;
-    }
-    if (session.country) {
-      location += getCountryName(session.country);
-    }
-    return location;
-  };
-
   return (
     <div className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden">
       <div className="p-3 cursor-pointer" onClick={handleCardClick}>
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs font-mono text-gray-400">
-              {truncatedUserId}
-            </span>
+            <span className="text-xs font-mono text-gray-400">{truncatedUserId}</span>
           </div>
 
           {/* Icons section */}
           <div className="flex space-x-2 items-center md:ml-3">
-            {/* Country */}
             {session.country && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center">
-                    <CountryFlag country={session.country} />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{getFullLocation(session)}</p>
-                </TooltipContent>
-              </Tooltip>
+              <CountryFlagTooltipIcon country={session.country} city={session.city} region={session.region} />
             )}
-
-            {/* Browser */}
+            <BrowserTooltipIcon browser={session.browser || "Unknown"} browser_version={session.browser_version} />
+            <OperatingSystemTooltipIcon
+              operating_system={session.operating_system || ""}
+              operating_system_version={session.operating_system_version}
+            />
+            <DeviceTypeTooltipIcon
+              device_type={session.device_type || ""}
+              screen_width={session.screen_width}
+              screen_height={session.screen_height}
+            />
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex-shrink-0">
-                  <Browser browser={session.browser || "Unknown"} />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {session.browser || "Unknown browser"}
-                  {session.browser_version && ` ${session.browser_version}`}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* OS */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex-shrink-0">
-                  <OperatingSystem os={session.operating_system || ""} />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {session.operating_system || "Unknown OS"}
-                  {session.operating_system_version &&
-                    ` ${session.operating_system_version}`}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Device Type */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <DeviceIcon deviceType={session.device_type || ""} />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {session.device_type || "Unknown device"}
-                  {session.screen_width &&
-                    session.screen_height &&
-                    ` ${session.screen_width}x${session.screen_height}`}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1 bg-neutral-800 text-gray-300"
-                >
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
                   <FileText className="w-4 h-4 text-blue-500" />
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
@@ -176,15 +84,21 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1 bg-neutral-800 text-gray-300"
-                >
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
                   <MousePointerClick className="w-4 h-4 text-amber-500" />
                   <span>{formatter(session.events)}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>Events</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
+                  <TriangleAlert className="w-4 h-4 text-red-500" />
+                  <span>{formatter(session.errors)}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>Errors</TooltipContent>
             </Tooltip>
           </div>
 
@@ -249,17 +163,7 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
 export const SessionCardSkeleton = memo(() => {
   // Function to get a random width class for skeletons
   const getRandomWidth = () => {
-    const widths = [
-      "w-16",
-      "w-20",
-      "w-24",
-      "w-28",
-      "w-32",
-      "w-36",
-      "w-40",
-      "w-44",
-      "w-48",
-    ];
+    const widths = ["w-16", "w-20", "w-24", "w-28", "w-32", "w-36", "w-40", "w-44", "w-48"];
     return widths[Math.floor(Math.random() * widths.length)];
   };
 
@@ -277,10 +181,7 @@ export const SessionCardSkeleton = memo(() => {
 
   // Create multiple skeletons for a realistic loading state
   const skeletons = Array.from({ length: 10 }).map((_, index) => (
-    <div
-      className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden"
-      key={index}
-    >
+    <div className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden" key={index}>
       <div className="p-3">
         <div className="flex items-center gap-2">
           {/* Avatar and User ID */}
@@ -294,10 +195,9 @@ export const SessionCardSkeleton = memo(() => {
             <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
             <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
             <Skeleton className="h-4 w-4 rounded-sm" />
-            {/* Badge skeleton for pageviews */}
-            <Skeleton className="h-4 w-8 rounded-sm" />
-            {/* Badge skeleton for events */}
-            <Skeleton className="h-4 w-8 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
           </div>
 
           {/* Entry/Exit paths with randomized widths */}
@@ -315,9 +215,7 @@ export const SessionCardSkeleton = memo(() => {
             <Skeleton className={cn("h-3", getRandomTimeWidth())} />
 
             {/* Duration skeleton */}
-            <Skeleton
-              className={cn("h-3", getRandomDurationWidth(), "hidden md:block")}
-            />
+            <Skeleton className={cn("h-3", getRandomDurationWidth(), "hidden md:block")} />
           </div>
 
           {/* Expand icon */}
