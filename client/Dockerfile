@@ -1,5 +1,7 @@
 FROM node:20-alpine AS base
 
+#Command to build this: docker build -t labohkip81/rybbit-client -f /Users/mac/Dev/Karim/rybbit/client/Dockerfile .
+
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
