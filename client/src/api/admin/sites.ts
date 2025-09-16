@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { authClient } from "../../lib/auth";
 
 export type SiteResponse = {
+  id: string | null;
   siteId: number;
   name: string;
   domain: string;
@@ -17,22 +18,6 @@ export type SiteResponse = {
   blockBots: boolean;
   isOwner: boolean;
 };
-
-export type GetSitesResponse = {
-  siteId: number;
-  name: string;
-  domain: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  public: boolean;
-  saltUserIds: boolean;
-  blockBots: boolean;
-  overMonthlyLimit?: boolean;
-  monthlyEventCount?: number;
-  eventLimit?: number;
-  isOwner?: boolean;
-}[];
 
 export type GetSitesFromOrgResponse = {
   organization: {
@@ -47,6 +32,7 @@ export type GetSitesFromOrgResponse = {
     overMonthlyLimit: boolean | null;
   } | null;
   sites: Array<{
+    id: string | null;
     siteId: number;
     name: string;
     domain: string;
@@ -145,9 +131,7 @@ export function useSiteHasData(siteId: string) {
       if (!siteId) {
         return Promise.resolve(false);
       }
-      return authedFetch<{ hasData: boolean }>(`/site-has-data/${siteId}`).then(
-        (data) => data.hasData
-      );
+      return authedFetch<{ hasData: boolean }>(`/site-has-data/${siteId}`).then(data => data.hasData);
     },
     refetchInterval: 5000,
     staleTime: Infinity,
@@ -210,9 +194,7 @@ export function useGetSiteIsPublic(siteId?: string | number) {
       }
 
       try {
-        const data = await authedFetch<{ isPublic: boolean }>(
-          `/site-is-public/${siteId}`
-        );
+        const data = await authedFetch<{ isPublic: boolean }>(`/site-is-public/${siteId}`);
         return !!data.isPublic;
       } catch (error) {
         console.error("Error checking if site is public:", error);
@@ -230,9 +212,7 @@ export const useCurrentSite = () => {
   const pathname = usePathname();
 
   return {
-    site: sites?.sites.find(
-      (site) => site.siteId === Number(pathname.split("/")[1])
-    ),
+    site: sites?.sites.find(site => site.siteId === Number(pathname.split("/")[1])),
     subscription: sites?.subscription,
   };
 };

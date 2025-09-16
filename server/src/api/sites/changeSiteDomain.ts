@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { loadAllowedDomains } from "../../lib/allowedDomains.js";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 
@@ -13,7 +12,7 @@ export async function changeSiteDomain(
       newDomain: string;
     };
   }>,
-  reply: FastifyReply,
+  reply: FastifyReply
 ) {
   const { siteId, newDomain } = request.body;
 
@@ -38,19 +37,7 @@ export async function changeSiteDomain(
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Update the site domain
-    await db
-      .update(sites)
-      .set({
-        domain: newDomain,
-        name: newDomain,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(sites.siteId, siteId));
-
-    // Reload allowed domains to update CORS configuration
-    await loadAllowedDomains();
-    siteConfig.updateSiteDomain(siteId, newDomain);
+    siteConfig.updateConfig(siteId, { domain: newDomain });
 
     return reply.status(200).send({ message: "Domain updated successfully" });
   } catch (err) {

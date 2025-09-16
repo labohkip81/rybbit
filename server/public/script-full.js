@@ -71,31 +71,16 @@
       return null;
     }
     const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
-    if (!siteId || isNaN(Number(siteId))) {
-      console.error(
-        "Please provide a valid site ID using the data-site-id attribute"
-      );
+    if (!siteId) {
+      console.error("Please provide a valid site ID using the data-site-id attribute");
       return null;
     }
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
-    const skipPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-skip-patterns"),
-      []
-    );
-    const maskPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-mask-patterns"),
-      []
-    );
+    const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
+    const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const apiKey = scriptTag.getAttribute("data-api-key") || void 0;
-    const sessionReplayBatchSize = scriptTag.getAttribute(
-      "data-replay-batch-size"
-    ) ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
-    const sessionReplayBatchInterval = scriptTag.getAttribute(
-      "data-replay-batch-interval"
-    ) ? Math.max(
-      1e3,
-      parseInt(scriptTag.getAttribute("data-replay-batch-interval"))
-    ) : 5e3;
+    const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
+    const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
     return {
       analyticsHost,
       siteId,
@@ -312,19 +297,16 @@
         if (this.config.apiKey) {
           batch.apiKey = this.config.apiKey;
         }
-        await fetch(
-          `${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(batch),
-            mode: "cors",
-            keepalive: false
-            // Disable keepalive for large session replay requests
-          }
-        );
+        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(batch),
+          mode: "cors",
+          keepalive: false
+          // Disable keepalive for large session replay requests
+        });
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;
@@ -379,9 +361,7 @@
     }
     track(eventType, eventName = "", properties = {}) {
       if (eventType === "custom_event" && (!eventName || typeof eventName !== "string")) {
-        console.error(
-          "Event name is required and must be a string for custom events"
-        );
+        console.error("Event name is required and must be a string for custom events");
         return;
       }
       const basePayload = this.createBasePayload();
@@ -789,9 +769,7 @@
       if (this.sent) return;
       const metricName = metric.name.toLowerCase();
       this.data[metricName] = metric.value;
-      const allCollected = Object.values(this.data).every(
-        (value) => value !== null
-      );
+      const allCollected = Object.values(this.data).every((value) => value !== null);
       if (allCollected) {
         this.sendData();
       }
@@ -825,6 +803,8 @@
         },
         event: () => {
         },
+        error: () => {
+        },
         trackOutbound: () => {
         },
         identify: () => {
@@ -846,11 +826,9 @@
     }
     const tracker = new Tracker(config);
     if (config.enableWebVitals) {
-      const webVitalsCollector = new WebVitalsCollector(
-        (vitals) => {
-          tracker.trackWebVitals(vitals);
-        }
-      );
+      const webVitalsCollector = new WebVitalsCollector((vitals) => {
+        tracker.trackWebVitals(vitals);
+      });
       webVitalsCollector.initialize();
     }
     if (config.trackErrors) {
@@ -891,15 +869,9 @@
           target = target.parentElement;
         }
         if (config.trackOutbound) {
-          const link = e2.target.closest(
-            "a"
-          );
+          const link = e2.target.closest("a");
           if (link?.href && isOutboundLink(link.href)) {
-            tracker.trackOutbound(
-              link.href,
-              link.innerText || link.textContent || "",
-              link.target || "_self"
-            );
+            tracker.trackOutbound(link.href, link.innerText || link.textContent || "", link.target || "_self");
           }
         }
       });
@@ -929,6 +901,7 @@
     window.rybbit = {
       pageview: () => tracker.trackPageview(),
       event: (name, properties = {}) => tracker.trackEvent(name, properties),
+      error: (error, properties = {}) => tracker.trackError(error, properties),
       trackOutbound: (url, text = "", target = "_self") => tracker.trackOutbound(url, text, target),
       identify: (userId) => tracker.identify(userId),
       clearUserId: () => tracker.clearUserId(),

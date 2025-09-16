@@ -10,6 +10,7 @@ import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getEventNames } from "./api/analytics/events/getEventNames.js";
 import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
 import { getEvents } from "./api/analytics/events/getEvents.js";
+import { getOutboundLinks } from "./api/analytics/events/getOutboundLinks.js";
 import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
 import { deleteFunnel } from "./api/analytics/funnels/deleteFunnel.js";
 import { getFunnel } from "./api/analytics/funnels/getFunnel.js";
@@ -64,22 +65,8 @@ import { handleWebhook } from "./api/stripe/webhook.js";
 import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
 import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
 import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
-import { getMonitors } from "./api/uptime/getMonitors.js";
-import { getMonitor } from "./api/uptime/getMonitor.js";
-import { createMonitor } from "./api/uptime/createMonitor.js";
-import { updateMonitor } from "./api/uptime/updateMonitor.js";
-import { deleteMonitor } from "./api/uptime/deleteMonitor.js";
-import { getMonitorEvents } from "./api/uptime/getMonitorEvents.js";
-import { getMonitorStats } from "./api/uptime/getMonitorStats.js";
-import { getMonitorUptimeBuckets } from "./api/uptime/getMonitorUptimeBuckets.js";
-import { getMonitorStatus } from "./api/uptime/getMonitorStatus.js";
-import { getMonitorUptime } from "./api/uptime/getMonitorUptime.js";
-import { getRegions } from "./api/uptime/getRegions.js";
-import { incidentsRoutes } from "./api/uptime/incidents.js";
-import { notificationRoutes } from "./api/uptime/notifications.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
-import { loadAllowedDomains } from "./lib/allowedDomains.js";
 import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
@@ -87,8 +74,8 @@ import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 // need to import telemetry service here to start it
 import { telemetryService } from "./services/telemetryService.js";
-import { uptimeService } from "./services/uptime/uptimeService.js";
-import { extractSiteId, isSitePublic } from "./utils.js";
+import { extractSiteId } from "./utils.js";
+import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -161,12 +148,6 @@ const server = Fastify({
 server.register(cors, {
   origin: (_origin, callback) => {
     callback(null, true);
-
-    // if (!origin || allowList.includes(normalizeOrigin(origin))) {
-    //   callback(null, true);
-    // } else {
-    //   callback(new Error("Not allowed by CORS"), false);
-    // }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -181,7 +162,7 @@ server.register(fastifyStatic, {
 
 server.register(
   async (fastify, options) => {
-    await fastify.register((fastify) => {
+    await fastify.register(fastify => {
       const authHandler = toNodeHandler(options.auth);
 
       fastify.addContentTypeParser(
@@ -189,7 +170,7 @@ server.register(
         /* c8 ignore next 3 */
         (_request, _payload, done) => {
           done(null, null);
-        },
+        }
       );
 
       fastify.all("/api/auth/*", async (request, reply: any) => {
@@ -202,7 +183,7 @@ server.register(
       });
     });
   },
-  { auth: auth! },
+  { auth: auth! }
 );
 
 const PUBLIC_ROUTES: string[] = [
@@ -220,6 +201,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/stripe/webhook",
   "/api/session-replay/record",
   "/api/admin/telemetry",
+  "/api/site/:siteId/tracking-config",
 ];
 
 // Define analytics routes that can be public
@@ -247,6 +229,7 @@ const ANALYTICS_ROUTES = [
   "/api/analytics/events/names/",
   "/api/analytics/events/properties/",
   "/api/events/",
+  "/api/events/outbound/",
   "/api/get-site",
   "/api/performance/overview/",
   "/api/performance/time-series/",
@@ -266,15 +249,15 @@ server.addHook("onRequest", async (request, reply) => {
   let processedUrl = url;
 
   // Bypass auth for public routes (now including the prepended /api)
-  if (PUBLIC_ROUTES.some((route) => processedUrl.includes(route))) {
+  if (PUBLIC_ROUTES.some(route => processedUrl.includes(route))) {
     return;
   }
 
   // Check if it's an analytics route and get site ID (now including the prepended /api)
-  if (ANALYTICS_ROUTES.some((route) => processedUrl.startsWith(route))) {
+  if (ANALYTICS_ROUTES.some(route => processedUrl.startsWith(route))) {
     const siteId = extractSiteId(processedUrl);
 
-    if (siteId && (await isSitePublic(siteId))) {
+    if (siteId && (await siteConfig.getConfig(siteId))?.public) {
       // Skip auth check for public sites
       return;
     }
@@ -333,6 +316,7 @@ server.delete("/api/goal/:goalId", deleteGoal);
 server.put("/api/goal/update", updateGoal);
 server.get("/api/events/names/:site", getEventNames);
 server.get("/api/events/properties/:site", getEventProperties);
+server.get("/api/events/outbound/:site", getOutboundLinks);
 server.get("/api/org-event-count/:organizationId", getOrgEventCount);
 
 // Performance Analytics
@@ -357,6 +341,7 @@ server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
 server.get("/api/get-site/:id", getSite);
 server.get("/api/site/:siteId/api-config", getSiteApiConfig);
 server.post("/api/site/:siteId/api-config", updateSiteApiConfig);
+server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
 server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
 server.post("/api/site/:siteId/excluded-ips", updateSiteExcludedIPs);
 server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
@@ -364,23 +349,41 @@ server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);
 
 // UPTIME MONITORING
-server.get("/api/uptime/monitors", getMonitors);
-server.get("/api/uptime/monitors/:monitorId", getMonitor);
-server.post("/api/uptime/monitors", createMonitor);
-server.put("/api/uptime/monitors/:monitorId", updateMonitor);
-server.delete("/api/uptime/monitors/:monitorId", deleteMonitor);
-server.get("/api/uptime/monitors/:monitorId/events", getMonitorEvents);
-server.get("/api/uptime/monitors/:monitorId/stats", getMonitorStats);
-server.get("/api/uptime/monitors/:monitorId/status", getMonitorStatus);
-server.get("/api/uptime/monitors/:monitorId/uptime", getMonitorUptime);
-server.get("/api/uptime/monitors/:monitorId/buckets", getMonitorUptimeBuckets);
-server.get("/api/uptime/regions", getRegions);
+// Only register uptime routes when IS_CLOUD is true (Redis is available)
+if (IS_CLOUD) {
+  // Dynamically import uptime modules only when needed
+  const { getMonitors } = await import("./api/uptime/getMonitors.js");
+  const { getMonitor } = await import("./api/uptime/getMonitor.js");
+  const { createMonitor } = await import("./api/uptime/createMonitor.js");
+  const { updateMonitor } = await import("./api/uptime/updateMonitor.js");
+  const { deleteMonitor } = await import("./api/uptime/deleteMonitor.js");
+  const { getMonitorEvents } = await import("./api/uptime/getMonitorEvents.js");
+  const { getMonitorStats } = await import("./api/uptime/getMonitorStats.js");
+  const { getMonitorUptimeBuckets } = await import("./api/uptime/getMonitorUptimeBuckets.js");
+  const { getMonitorStatus } = await import("./api/uptime/getMonitorStatus.js");
+  const { getMonitorUptime } = await import("./api/uptime/getMonitorUptime.js");
+  const { getRegions } = await import("./api/uptime/getRegions.js");
+  const { incidentsRoutes } = await import("./api/uptime/incidents.js");
+  const { notificationRoutes } = await import("./api/uptime/notifications.js");
 
-// Register incidents routes
-server.register(incidentsRoutes);
+  server.get("/api/uptime/monitors", getMonitors);
+  server.get("/api/uptime/monitors/:monitorId", getMonitor);
+  server.post("/api/uptime/monitors", createMonitor);
+  server.put("/api/uptime/monitors/:monitorId", updateMonitor);
+  server.delete("/api/uptime/monitors/:monitorId", deleteMonitor);
+  server.get("/api/uptime/monitors/:monitorId/events", getMonitorEvents);
+  server.get("/api/uptime/monitors/:monitorId/stats", getMonitorStats);
+  server.get("/api/uptime/monitors/:monitorId/status", getMonitorStatus);
+  server.get("/api/uptime/monitors/:monitorId/uptime", getMonitorUptime);
+  server.get("/api/uptime/monitors/:monitorId/buckets", getMonitorUptimeBuckets);
+  server.get("/api/uptime/regions", getRegions);
 
-// Register notification routes
-server.register(notificationRoutes);
+  // Register incidents routes
+  server.register(incidentsRoutes);
+
+  // Register notification routes
+  server.register(notificationRoutes);
+}
 
 // STRIPE & ADMIN
 
@@ -405,7 +408,7 @@ server.get("/api/health", { logLevel: "silent" }, (_, reply) => reply.send("OK")
 const start = async () => {
   try {
     console.info("Starting server...");
-    await Promise.all([initializeClickhouse(), loadAllowedDomains(), siteConfig.loadSiteConfigs(), initPostgres()]);
+    await Promise.all([initializeClickhouse(), initPostgres()]);
 
     telemetryService.startTelemetryCron();
 
@@ -418,16 +421,18 @@ const start = async () => {
       server.log.info({ axiom: true, dataset: process.env.AXIOM_DATASET }, "Axiom logging is configured");
     }
 
-    // Initialize uptime monitoring service in the background (non-blocking)
-    uptimeService
-      .initialize()
-      .then(() => {
-        server.log.info("Uptime monitoring service initialized successfully");
-      })
-      .catch((error) => {
-        server.log.error("Failed to initialize uptime service:", error);
-        // Continue running without uptime monitoring
-      });
+    // if (process.env.NODE_ENV === "production") {
+    //   // Initialize uptime monitoring service in the background (non-blocking)
+    //   uptimeService
+    //     .initialize()
+    //     .then(() => {
+    //       server.log.info("Uptime monitoring service initialized successfully");
+    //     })
+    //     .catch((error) => {
+    //       server.log.error("Failed to initialize uptime service:", error);
+    //       // Continue running without uptime monitoring
+    //     });
+    // }
   } catch (err) {
     server.log.error(err);
     process.exit(1);
@@ -460,8 +465,8 @@ const shutdown = async (signal: string) => {
     server.log.info("Server closed");
 
     // Shutdown uptime service
-    await uptimeService.shutdown();
-    server.log.info("Uptime service shut down");
+    // await uptimeService.shutdown();
+    // server.log.info("Uptime service shut down");
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);
