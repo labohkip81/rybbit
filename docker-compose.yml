@@ -113,7 +113,7 @@ services:
     restart: unless-stopped
 
   client:
-    image: docker.io/labohkip81/rybbit-client2:latest
+    image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
     container_name: client
     build:
       context: .
